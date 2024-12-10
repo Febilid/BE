@@ -30,7 +30,7 @@ def test_knn_model(test_image_path, knn, X_train, y_train):
 
 if __name__ == "__main__":
     data_dir = r"D:\Be\BE\ML\uploads\age"
-    test_image_path = r"D:\Be\BE\ML\uploads\images\shamil.jpg"
+    test_image_path = r"D:\Be\BE\ML\uploads\images\mumtaz.jpg"
 
     X, y = prepare_data(data_dir)
     knn, _, _ = train_knn(X, y)

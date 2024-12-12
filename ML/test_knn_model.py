@@ -4,6 +4,9 @@ from knn_model import prepare_data, train_knn, label_mapping
 from lbp_utils import detect_and_preprocess_face, extract_combined_features
 
 def test_knn_model(test_image_path, knn, X_train, y_train):
+    """
+    Uji model KNN menggunakan gambar baru.
+    """
     test_image = cv2.imread(test_image_path)
     face = detect_and_preprocess_face(test_image)
     if face is None:

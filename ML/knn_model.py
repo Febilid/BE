@@ -19,7 +19,10 @@ label_mapping = {
 }
 
 def prepare_data(data_dir):
-    features, labels = [], []
+    """
+    Persiapkan data dengan membaca gambar, mengekstraksi fitur, dan menandainya dengan label.
+    """
+    features, labels = []
     for label_dir in os.listdir(data_dir):
         label_path = os.path.join(data_dir, label_dir)
         if os.path.isdir(label_path):
@@ -40,6 +43,9 @@ def prepare_data(data_dir):
     return np.array(features), np.array(labels)
 
 def train_knn(X, y, k=5):
+    """
+    Latih model KNN menggunakan data fitur dan label.
+    """
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     knn = KNeighborsClassifier(n_neighbors=k, weights='distance')
     knn.fit(X_train, y_train)

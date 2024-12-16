@@ -1,6 +1,9 @@
+# lbp_utils.py
 import cv2
 import numpy as np
 from skimage.feature import hog, local_binary_pattern
+from sklearn.decomposition import PCA
+
 
 def detect_and_preprocess_face(image):
     """
@@ -14,12 +17,9 @@ def detect_and_preprocess_face(image):
         x, y, w, h = max(faces, key=lambda rect: rect[2] * rect[3])
         face = gray[y:y+h, x:x+w]
         face = cv2.resize(face, (100, 100), interpolation=cv2.INTER_AREA)
-
-        mask = np.zeros_like(face)
-        mask = cv2.circle(mask, (50, 50), 40, 255, -1)
-        face = cv2.bitwise_and(face, mask)
         return face
     return None
+
 
 def extract_canny_features(face):
     """
@@ -29,12 +29,14 @@ def extract_canny_features(face):
     edges_hist, _ = np.histogram(edges.ravel(), bins=np.arange(0, 256), density=True)
     return edges_hist
 
+
 def extract_hog_features(face):
     """
     Ekstraksi fitur HOG dari wajah.
     """
     hog_features = hog(face, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2), block_norm='L2-Hys', feature_vector=True)
     return hog_features
+
 
 def extract_lbp_features(face):
     """
@@ -44,6 +46,7 @@ def extract_lbp_features(face):
     lbp_hist, _ = np.histogram(lbp.ravel(), bins=np.arange(0, 10), density=True)
     return lbp_hist
 
+
 def extract_combined_features(face):
     """
     Gabungkan fitur dari Canny, HOG, dan LBP.
@@ -51,4 +54,14 @@ def extract_combined_features(face):
     canny_features = extract_canny_features(face)
     hog_features = extract_hog_features(face)
     lbp_features = extract_lbp_features(face)
-    return np.hstack((canny_features, hog_features, lbp_features))
+    combined_features = np.hstack((canny_features, hog_features, lbp_features))
+    return combined_features
+
+
+def reduce_dimensionality(X, n_components=100):
+    """
+    Mengurangi dimensi fitur menggunakan PCA.
+    """
+    pca = PCA(n_components=n_components)
+    X_reduced = pca.fit_transform(X)
+    return X_reduced, pca

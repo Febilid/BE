@@ -1,0 +1,165 @@
+# lbp_utils.py
+import cv2
+import numpy as np
+from skimage.feature import hog, local_binary_pattern
+from sklearn.decomposition import PCA
+
+
+def detect_and_preprocess_face(image):
+    """
+    Deteksi wajah dalam gambar dan lakukan pra-pemrosesan.
+    """
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=3, minSize=(100, 100))
+
+    if len(faces) > 0:
+        x, y, w, h = max(faces, key=lambda rect: rect[2] * rect[3])
+        face = gray[y:y+h, x:x+w]
+        face = cv2.resize(face, (100, 100), interpolation=cv2.INTER_AREA)
+        return face
+    return None
+
+
+def extract_canny_features(face):
+    """
+    Ekstraksi fitur Canny edge dari wajah.
+    """
+    edges = cv2.Canny(face, threshold1=30, threshold2=100)
+    edges_hist, _ = np.histogram(edges.ravel(), bins=np.arange(0, 256), density=True)
+    return edges_hist
+
+
+def extract_hog_features(face):
+    """
+    Ekstraksi fitur HOG dari wajah.
+    """
+    hog_features = hog(face, orientations=9, pixels_per_cell=(8, 8), cells_per_block=(2, 2), block_norm='L2-Hys', feature_vector=True)
+    return hog_features
+
+
+def extract_lbp_features(face):
+    """
+    Ekstraksi fitur LBP dari wajah.
+    """
+    lbp = local_binary_pattern(face, P=8, R=1, method='uniform')
+    lbp_hist, _ = np.histogram(lbp.ravel(), bins=np.arange(0, 10), density=True)
+    return lbp_hist
+
+
+def extract_combined_features(face):
+    """
+    Gabungkan fitur dari Canny, HOG, dan LBP.
+    """
+    canny_features = extract_canny_features(face)
+    hog_features = extract_hog_features(face)
+    lbp_features = extract_lbp_features(face)
+    combined_features = np.hstack((canny_features, hog_features, lbp_features))
+    return combined_features
+
+
+def reduce_dimensionality(X, n_components=100):
+    """
+    Mengurangi dimensi fitur menggunakan PCA.
+    """
+    pca = PCA(n_components=n_components)
+    X_reduced = pca.fit_transform(X)
+    return X_reduced, pca
+
+
+# knn_model.py
+import cv2
+import os
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
+from lbp_utils import detect_and_preprocess_face, extract_combined_features, reduce_dimensionality
+
+
+def prepare_data(data_dir):
+    """
+    Membaca dataset dan menyiapkan fitur dan label dari dataset.
+    """
+    features, labels = [], []
+    for label_dir in os.listdir(data_dir):
+        label_path = os.path.join(data_dir, label_dir)
+        if os.path.isdir(label_path):
+            for img_file in os.listdir(label_path):
+                img_path = os.path.join(label_path, img_file)
+                image = cv2.imread(img_path)
+                if image is not None:
+                    face = detect_and_preprocess_face(image)
+                    if face is not None:
+                        feature = extract_combined_features(face)
+                        features.append(feature)
+                        labels.append(label_dir)  # Ambil nama folder sebagai label
+
+    features = np.array(features)
+    labels = np.array(labels)
+    print(f"Jumlah sampel: {len(features)}, Dimensi fitur awal: {features.shape}")
+
+    # Reduksi Dimensi dengan PCA
+    X_reduced, pca = reduce_dimensionality(features)
+
+    # Split data untuk KNN
+    X_train, X_test, y_train, y_test = train_test_split(X_reduced, labels, test_size=0.2, random_state=42)
+
+    # Latih model KNN
+    knn = KNeighborsClassifier(n_neighbors=5, weights='distance')
+    knn.fit(X_train, y_train)
+
+    # Hitung akurasi
+    y_pred = knn.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred)
+    print(f"Akurasi model KNN: {accuracy:.2f}")
+
+    return knn, X_train, y_train, pca, accuracy
+
+
+# test_knn_model.py
+import cv2
+import matplotlib.pyplot as plt
+from knn_model import prepare_data
+from lbp_utils import detect_and_preprocess_face, extract_combined_features
+
+
+def test_knn_model(test_image_path, knn, pca, accuracy):
+    """
+    Uji model KNN menggunakan gambar baru tanpa label.
+    """
+    print("Membaca gambar uji...")
+    test_image = cv2.imread(test_image_path)
+    face = detect_and_preprocess_face(test_image)
+
+    if face is None:
+        print("No face detected in test image.")
+        return
+
+    print("Ekstrak fitur...")
+    test_feature = extract_combined_features(face)
+    test_feature_reduced = pca.transform([test_feature])
+
+    print("Melakukan prediksi dengan KNN...")
+    predicted_label = knn.predict(test_feature_reduced)[0]
+
+    print(f"Hasil Prediksi: {predicted_label}")
+
+    # Visualisasi hasil
+    plt.figure(figsize=(8, 8))
+    plt.axis("off")
+    plt.title(f"Hasil Prediksi: {predicted_label}\nAkurasi Model: {accuracy:.2f}")
+    plt.imshow(cv2.cvtColor(test_image, cv2.COLOR_BGR2RGB))
+    plt.show()
+
+
+if __name__ == "__main__":
+    # Path dataset dan uji gambar
+    data_dir = r"D:\Be\BE\ML\uploads\age"
+    test_image_path = r"D:\Be\BE\ML\uploads\images\mumtaz.jpg"
+
+    # Persiapan data dan model KNN
+    knn, X_train, y_train, pca, accuracy = prepare_data(data_dir)
+
+    # Uji model KNN
+    test_knn_model(test_image_path, knn, pca, accuracy)

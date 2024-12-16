@@ -35,7 +35,7 @@ def test_knn_model(test_image_path, knn, pca, accuracy):
 if __name__ == "__main__":
     # Path dataset dan uji gambar
     data_dir = r"D:\Be\BE\ML\uploads\age"
-    test_image_path = r"D:\Be\BE\ML\uploads\images\foy1.jpg"
+    test_image_path = r"D:\Be\BE\ML\uploads\images\ridho.jpg"
 
     knn, X_train, y_train, pca, accuracy = prepare_data(data_dir)
 

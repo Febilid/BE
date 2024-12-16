@@ -58,7 +58,7 @@ def extract_combined_features(face):
     return combined_features
 
 
-def reduce_dimensionality(X, n_components=100):
+def reduce_dimensionality(X, n_components=1000):
     """
     Mengurangi dimensi fitur menggunakan PCA.
     """
